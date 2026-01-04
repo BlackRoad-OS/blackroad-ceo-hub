@@ -1,0 +1,177 @@
+name: 🚀 Release Firmware
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v2.0.0)'
+        required: true
+        type: string
+
+jobs:
+  release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: 🐍 Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: 📦 Install PlatformIO
+      run: |
+        python -m pip install --upgrade pip
+        pip install platformio
+
+    - name: 📥 Install dependencies
+      run: pio pkg install
+
+    - name: 🔨 Build firmware
+      run: pio run
+
+    - name: 📝 Get version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: 📦 Prepare release files
+      run: |
+        mkdir -p release
+        cp .pio/build/esp32dev/firmware.bin release/blackroad-ceo-hub-${{ steps.version.outputs.version }}.bin
+        cp .pio/build/esp32dev/firmware.elf release/blackroad-ceo-hub-${{ steps.version.outputs.version }}.elf
+
+        # Create flash instructions
+        cat > release/FLASH_INSTRUCTIONS.txt << 'EOF'
+        🖤🛣️ BlackRoad CEO Hub v2.0 - Flash Instructions
+        ================================================
+
+        ## Method 1: Using esptool.py
+
+        ```bash
+        pip install esptool
+        esptool.py --port /dev/cu.usbserial-110 write_flash 0x10000 blackroad-ceo-hub-*.bin
+        ```
+
+        ## Method 2: Using PlatformIO
+
+        ```bash
+        pio run --target upload
+        ```
+
+        ## Method 3: Using Web Flasher
+
+        Visit: https://web.esphome.io/
+
+        1. Click "Connect"
+        2. Select your ESP32 device
+        3. Click "Install"
+        4. Choose "File" and select the .bin file
+        5. Click "Install"
+
+        ## Serial Monitor
+
+        ```bash
+        pio device monitor --baud 115200
+        ```
+
+        Or use Arduino IDE Serial Monitor at 115200 baud.
+
+        ---
+
+        For more details: https://github.com/BlackRoad-OS/blackroad-ceo-hub
+        EOF
+
+        # Generate SHA256 checksums
+        cd release
+        sha256sum *.bin *.elf > checksums.txt
+        cd ..
+
+    - name: 📝 Generate release notes
+      id: release_notes
+      run: |
+        cat > release_notes.md << 'EOF'
+        ## 🖤🛣️ BlackRoad CEO Hub ${{ steps.version.outputs.version }}
+
+        **The Ultimate CEO Control System for ESP32**
+
+        ### ✨ Features
+
+        - 📡 WiFi + WebSocket real-time sync
+        - 👆 Full touch support with swipe gestures
+        - 📊 Data charts and visualizations
+        - 🔔 Notification system
+        - 🎨 Official BlackRoad brand colors
+        - 📱 6 screens: Home, Projects, AI, Finance, Studio, Settings
+
+        ### 📦 What's Included
+
+        - `blackroad-ceo-hub-*.bin` - Firmware binary for flashing
+        - `blackroad-ceo-hub-*.elf` - Debug symbols (optional)
+        - `FLASH_INSTRUCTIONS.txt` - How to flash the firmware
+        - `checksums.txt` - SHA256 checksums for verification
+
+        ### 🔧 Hardware Requirements
+
+        - **Board:** ESP32-2432S028R (Cheap Yellow Display)
+        - **Display:** 2.8" ILI9341 (240x320)
+        - **Touch:** Resistive touchscreen
+
+        ### 🚀 Quick Start
+
+        1. Download `blackroad-ceo-hub-*.bin`
+        2. Flash to your ESP32 (see FLASH_INSTRUCTIONS.txt)
+        3. Update WiFi credentials in code if needed
+        4. Enjoy your CEO dashboard!
+
+        ### 📖 Documentation
+
+        - [README](https://github.com/BlackRoad-OS/blackroad-ceo-hub/blob/main/README.md)
+        - [Worktree Development Guide](https://github.com/BlackRoad-OS/blackroad-ceo-hub/tree/main)
+
+        ### 🤝 Contributing
+
+        See [CLAUDE_AGENTS.md](https://github.com/BlackRoad-OS/blackroad-ceo-hub) for parallel development workflow.
+
+        ---
+
+        🖤🛣️ **"The road remembers everything."** 🛣️🖤
+        EOF
+
+        echo "notes_file=release_notes.md" >> $GITHUB_OUTPUT
+
+    - name: 🚀 Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.version }}
+        name: BlackRoad CEO Hub ${{ steps.version.outputs.version }}
+        body_path: ${{ steps.release_notes.outputs.notes_file }}
+        files: |
+          release/*
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: ✅ Release summary
+      run: |
+        echo "### 🎉 Release Created!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Version:** ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Files:**" >> $GITHUB_STEP_SUMMARY
+        ls -lh release/ >> $GITHUB_STEP_SUMMARY

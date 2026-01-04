@@ -2,7 +2,15 @@
 
 **The Ultimate CEO Control System for ESP32**
 
+[![Build](https://github.com/BlackRoad-OS/blackroad-ceo-hub/actions/workflows/build.yml/badge.svg)](https://github.com/BlackRoad-OS/blackroad-ceo-hub/actions/workflows/build.yml)
+[![Release](https://github.com/BlackRoad-OS/blackroad-ceo-hub/actions/workflows/release.yml/badge.svg)](https://github.com/BlackRoad-OS/blackroad-ceo-hub/actions/workflows/release.yml)
+[![OTA Server](https://github.com/BlackRoad-OS/blackroad-ceo-hub/actions/workflows/ota-server.yml/badge.svg)](https://github.com/BlackRoad-OS/blackroad-ceo-hub/actions/workflows/ota-server.yml)
+[![License](https://img.shields.io/badge/License-BlackRoad%20OS-hotpink)](LICENSE)
+
 Transform your ESP32-2432S028R into a powerful executive dashboard with real-time metrics, touch navigation, and live data sync.
+
+**🌐 OTA Server:** [blackroad-ceo-hub-ota.pages.dev](https://blackroad-ceo-hub-ota.pages.dev)
+**📦 Latest Release:** [Download Firmware](https://github.com/BlackRoad-OS/blackroad-ceo-hub/releases/latest)
 
 ## ✨ Features
 

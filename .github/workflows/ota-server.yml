@@ -1,0 +1,275 @@
+name: 🌐 Deploy OTA Server
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.pio/build/esp32dev/firmware.bin'
+      - '.github/workflows/ota-server.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy-ota:
+    name: Deploy to Cloudflare Pages
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      deployments: write
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: 📦 Install PlatformIO
+      run: |
+        python -m pip install --upgrade pip
+        pip install platformio
+
+    - name: 🔨 Build firmware
+      run: pio run
+
+    - name: 📝 Generate OTA manifest
+      run: |
+        mkdir -p ota-server
+        cp .pio/build/esp32dev/firmware.bin ota-server/
+
+        # Get firmware info
+        FIRMWARE_SIZE=$(stat -f%z .pio/build/esp32dev/firmware.bin 2>/dev/null || stat -c%s .pio/build/esp32dev/firmware.bin)
+        FIRMWARE_SHA256=$(sha256sum .pio/build/esp32dev/firmware.bin | awk '{print $1}')
+        VERSION=$(git describe --tags --always)
+        BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+        # Create manifest.json
+        cat > ota-server/manifest.json << EOF
+        {
+          "version": "$VERSION",
+          "buildDate": "$BUILD_DATE",
+          "firmware": {
+            "url": "/firmware.bin",
+            "size": $FIRMWARE_SIZE,
+            "sha256": "$FIRMWARE_SHA256"
+          },
+          "changelog": [
+            "WiFi + WebSocket real-time sync",
+            "Full touch support with swipe gestures",
+            "Data charts and visualizations",
+            "Notification system",
+            "Official BlackRoad brand colors"
+          ]
+        }
+        EOF
+
+        # Create simple HTML page
+        cat > ota-server/index.html << 'EOF'
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>🖤🛣️ BlackRoad CEO Hub - OTA Updates</title>
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body {
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    background: #000;
+                    color: #fff;
+                    line-height: 1.6;
+                    padding: 20px;
+                }
+                .container {
+                    max-width: 800px;
+                    margin: 0 auto;
+                }
+                h1 {
+                    color: #FF1D6C;
+                    margin-bottom: 10px;
+                }
+                h2 {
+                    color: #F5A623;
+                    margin: 30px 0 15px;
+                }
+                .card {
+                    background: #1a1a1a;
+                    border: 2px solid #FF1D6C;
+                    border-radius: 10px;
+                    padding: 20px;
+                    margin: 20px 0;
+                }
+                .btn {
+                    display: inline-block;
+                    background: #FF1D6C;
+                    color: #fff;
+                    padding: 12px 24px;
+                    border-radius: 6px;
+                    text-decoration: none;
+                    font-weight: bold;
+                    margin: 10px 10px 10px 0;
+                }
+                .btn:hover {
+                    background: #d91859;
+                }
+                .btn-secondary {
+                    background: #2979FF;
+                }
+                .btn-secondary:hover {
+                    background: #1e5bbf;
+                }
+                code {
+                    background: #2a2a2a;
+                    padding: 2px 6px;
+                    border-radius: 4px;
+                    color: #F5A623;
+                }
+                pre {
+                    background: #1a1a1a;
+                    padding: 15px;
+                    border-radius: 6px;
+                    overflow-x: auto;
+                    margin: 15px 0;
+                }
+                ul {
+                    margin-left: 20px;
+                    margin-top: 10px;
+                }
+                li {
+                    margin: 8px 0;
+                }
+                .status {
+                    display: inline-block;
+                    padding: 4px 12px;
+                    border-radius: 4px;
+                    font-size: 14px;
+                    font-weight: bold;
+                }
+                .status-online {
+                    background: #4CAF50;
+                    color: #000;
+                }
+                .info {
+                    display: grid;
+                    grid-template-columns: 150px 1fr;
+                    gap: 10px;
+                    margin: 10px 0;
+                }
+                .info-label {
+                    color: #9C27B0;
+                    font-weight: bold;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>🖤🛣️ BlackRoad CEO Hub</h1>
+                <p style="color: #999; margin-bottom: 30px;">Over-the-Air Firmware Updates</p>
+
+                <div class="card">
+                    <h2>📡 Latest Firmware</h2>
+                    <div id="firmware-info">
+                        <p>Loading firmware information...</p>
+                    </div>
+                    <a href="/firmware.bin" class="btn" download>Download Firmware</a>
+                    <a href="https://github.com/BlackRoad-OS/blackroad-ceo-hub" class="btn btn-secondary">View on GitHub</a>
+                </div>
+
+                <div class="card">
+                    <h2>🚀 OTA Update Methods</h2>
+
+                    <h3 style="color: #2979FF; margin-top: 20px;">Method 1: Web Flasher</h3>
+                    <p>Easiest method - Flash directly from your browser:</p>
+                    <ol>
+                        <li>Visit <a href="https://web.esphome.io/" style="color: #F5A623;">web.esphome.io</a></li>
+                        <li>Click "Connect" and select your ESP32</li>
+                        <li>Choose "Install" → "File"</li>
+                        <li>Select the downloaded firmware.bin</li>
+                        <li>Click "Install" and wait</li>
+                    </ol>
+
+                    <h3 style="color: #2979FF; margin-top: 20px;">Method 2: esptool.py</h3>
+                    <p>Command-line flashing:</p>
+                    <pre><code>pip install esptool
+esptool.py --port /dev/cu.usbserial-110 write_flash 0x10000 firmware.bin</code></pre>
+
+                    <h3 style="color: #2979FF; margin-top: 20px;">Method 3: PlatformIO</h3>
+                    <p>For developers:</p>
+                    <pre><code>cd blackroad-ceo-hub
+pio run --target upload</code></pre>
+
+                    <h3 style="color: #2979FF; margin-top: 20px;">Method 4: OTA via WiFi (Coming Soon)</h3>
+                    <p>Direct WiFi updates from the device settings screen.</p>
+                </div>
+
+                <div class="card">
+                    <h2>📖 Documentation</h2>
+                    <ul>
+                        <li><a href="https://github.com/BlackRoad-OS/blackroad-ceo-hub/blob/main/README.md" style="color: #F5A623;">Installation Guide</a></li>
+                        <li><a href="https://github.com/BlackRoad-OS/blackroad-ceo-hub" style="color: #F5A623;">Source Code</a></li>
+                        <li><a href="https://github.com/BlackRoad-OS/blackroad-ceo-hub/releases" style="color: #F5A623;">Release Notes</a></li>
+                    </ul>
+                </div>
+
+                <p style="text-align: center; color: #999; margin-top: 40px;">
+                    🖤🛣️ "The road remembers everything." 🛣️🖤
+                </p>
+            </div>
+
+            <script>
+                // Fetch and display firmware info
+                fetch('/manifest.json')
+                    .then(res => res.json())
+                    .then(data => {
+                        const info = document.getElementById('firmware-info');
+                        info.innerHTML = `
+                            <div class="info">
+                                <div class="info-label">Version:</div>
+                                <div><code>${data.version}</code></div>
+                            </div>
+                            <div class="info">
+                                <div class="info-label">Build Date:</div>
+                                <div>${new Date(data.buildDate).toLocaleString()}</div>
+                            </div>
+                            <div class="info">
+                                <div class="info-label">Size:</div>
+                                <div>${(data.firmware.size / 1024).toFixed(2)} KB</div>
+                            </div>
+                            <div class="info">
+                                <div class="info-label">SHA256:</div>
+                                <div><code style="font-size: 12px;">${data.firmware.sha256}</code></div>
+                            </div>
+                            <div class="info">
+                                <div class="info-label">Status:</div>
+                                <div><span class="status status-online">ONLINE</span></div>
+                            </div>
+                            <h3 style="color: #9C27B0; margin-top: 20px;">What's New:</h3>
+                            <ul>
+                                ${data.changelog.map(item => `<li>${item}</li>`).join('')}
+                            </ul>
+                        `;
+                    })
+                    .catch(err => {
+                        console.error('Failed to load firmware info:', err);
+                    });
+            </script>
+        </body>
+        </html>
+        EOF
+
+    - name: 🚀 Deploy to Cloudflare Pages
+      uses: cloudflare/wrangler-action@v3
+      with:
+        apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        command: pages deploy ota-server --project-name=blackroad-ceo-hub-ota --branch=main
+
+    - name: ✅ Deployment summary
+      run: |
+        echo "### 🌐 OTA Server Deployed!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**URL:** https://blackroad-ceo-hub-ota.pages.dev" >> $GITHUB_STEP_SUMMARY
+        echo "**Firmware:** /firmware.bin" >> $GITHUB_STEP_SUMMARY
+        echo "**Manifest:** /manifest.json" >> $GITHUB_STEP_SUMMARY
