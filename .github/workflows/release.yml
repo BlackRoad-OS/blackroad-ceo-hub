@@ -11,22 +11,22 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: write
+
 jobs:
   release:
     name: Build and Release
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: write
-
     steps:
     - name: 📥 Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
       with:
         fetch-depth: 0
 
     - name: 🐍 Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c  # v5.0.0
       with:
         python-version: '3.11'
 
@@ -142,11 +142,7 @@ jobs:
         ### 📖 Documentation
 
         - [README](https://github.com/BlackRoad-OS/blackroad-ceo-hub/blob/main/README.md)
-        - [Worktree Development Guide](https://github.com/BlackRoad-OS/blackroad-ceo-hub/tree/main)
-
-        ### 🤝 Contributing
-
-        See [CLAUDE_AGENTS.md](https://github.com/BlackRoad-OS/blackroad-ceo-hub) for parallel development workflow.
+        - [Deployment Guide](https://github.com/BlackRoad-OS/blackroad-ceo-hub/blob/main/DEPLOYMENT.md)
 
         ---
 
@@ -156,7 +152,7 @@ jobs:
         echo "notes_file=release_notes.md" >> $GITHUB_OUTPUT
 
     - name: 🚀 Create GitHub Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844  # v1
       with:
         tag_name: ${{ steps.version.outputs.version }}
         name: BlackRoad CEO Hub ${{ steps.version.outputs.version }}
